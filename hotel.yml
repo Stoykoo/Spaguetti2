@@ -1,1 +1,461 @@
-.
+---
+- name: Instalar .NET Core 8 y configurar la aplicación de reservas de hotel
+  hosts: 127.0.0.1
+  connection: local
+  become: yes
+  tasks:
+    - name: Actualizar el sistema
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Instalar dependencias necesarias
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+        state: present
+
+    - name: Descargar el paquete de repositorio de Microsoft para Ubuntu 24.04 LTS
+      get_url:
+        url: https://packages.microsoft.com/config/ubuntu/24.04/packages-microsoft-prod.deb
+        dest: /tmp/packages-microsoft-prod.deb
+
+    - name: Instalar el paquete de repositorio de Microsoft
+      command: dpkg -i /tmp/packages-microsoft-prod.deb
+      args:
+        warn: false
+
+    - name: Actualizar el caché de apt después de agregar el repositorio
+      apt:
+        update_cache: yes
+
+    - name: Instalar .NET SDK
+      apt:
+        name: dotnet-sdk-8.0
+        state: present
+
+    - name: Crear directorio para la aplicación de reservas de hotel
+      file:
+        path: /home/ubuntu/hotel_booking_app
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Crear archivo del proyecto HotelBooking.csproj
+      copy:
+        dest: /home/ubuntu/hotel_booking_app/HotelBooking.csproj
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+        content: |
+          <Project Sdk="Microsoft.NET.Sdk.Web">
+            <PropertyGroup>
+              <TargetFramework>net8.0</TargetFramework>
+            </PropertyGroup>
+          </Project>
+
+    - name: Crear archivo Program.cs
+      copy:
+        dest: /home/ubuntu/hotel_booking_app/Program.cs
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+        content: |
+          using System;
+          using Microsoft.AspNetCore.Hosting;
+          using Microsoft.Extensions.Hosting;
+
+          namespace HotelBooking
+          {
+              public class Program
+              {
+                  public static void Main(string[] args)
+                  {
+                      CreateHostBuilder(args).Build().Run();
+                  }
+
+                  public static IHostBuilder CreateHostBuilder(string[] args) =>
+                      Host.CreateDefaultBuilder(args)
+                          .ConfigureWebHostDefaults(webBuilder =>
+                          {
+                              webBuilder.UseStartup<Startup>();
+                          });
+              }
+          }
+
+    - name: Crear archivo Startup.cs
+      copy:
+        dest: /home/ubuntu/hotel_booking_app/Startup.cs
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+        content: |
+          using Microsoft.AspNetCore.Builder;
+          using Microsoft.AspNetCore.Hosting;
+          using Microsoft.Extensions.DependencyInjection;
+          using Microsoft.Extensions.Hosting;
+
+          namespace HotelBooking
+          {
+              public class Startup
+              {
+                  public void ConfigureServices(IServiceCollection services)
+                  {
+                      services.AddControllers();
+                      services.AddSingleton<Hotel>();
+                      services.AddScoped<ReservationManager>();
+                      services.AddSingleton<IReservationStrategy, StandardReservationStrategy>();
+                      services.AddSingleton<IReservationObserver, CleaningService>();
+                  }
+
+                  public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+                  {
+                      if (env.IsDevelopment())
+                      {
+                          app.UseDeveloperExceptionPage();
+                      }
+                      else
+                      {
+                          app.UseExceptionHandler("/Home/Error");
+                          app.UseHsts();
+                      }
+
+                      app.UseRouting();
+                      app.UseAuthorization();
+
+                      app.UseEndpoints(endpoints =>
+                      {
+                          endpoints.MapControllers();
+                      });
+                  }
+              }
+          }
+
+    - name: Crear clase Hotel.cs
+      copy:
+        dest: /home/ubuntu/hotel_booking_app/Hotel.cs
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+        content: |
+          using System;
+          using System.Collections.Generic;
+
+          namespace HotelBooking
+          {
+              // Singleton Pattern: Hotel
+              public sealed class Hotel
+              {
+                  private static readonly Lazy<Hotel> instance = new Lazy<Hotel>(() => new Hotel());
+
+                  public string Name { get; private set; }
+                  public List<Room> Rooms { get; private set; }
+
+                  private Hotel()
+                  {
+                      Name = "Luxury Inn";
+                      Rooms = new List<Room>();
+                  }
+
+                  public static Hotel Instance
+                  {
+                      get
+                      {
+                          return instance.Value;
+                      }
+                  }
+
+                  public void AddRoom(Room room)
+                  {
+                      Rooms.Add(room);
+                      Console.WriteLine($"Added {room.RoomType} room at ${room.Price} per night.");
+                  }
+
+                  public void PrintAvailableRooms()
+                  {
+                      Console.WriteLine("\nAvailable Rooms:");
+                      foreach (var room in Rooms)
+                      {
+                          Console.WriteLine($"Room: {room.RoomType}, Price: ${room.Price}");
+                      }
+                  }
+              }
+
+              // Room Class
+              public class Room
+              {
+                  public string RoomType { get; set; }
+                  public double Price { get; set; }
+              }
+          }
+
+    - name: Crear clase RoomFactory.cs
+      copy:
+        dest: /home/ubuntu/hotel_booking_app/RoomFactory.cs
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+        content: |
+          using System;
+
+          namespace HotelBooking
+          {
+              // Factory Method Pattern: RoomFactory
+              public abstract class RoomFactory
+              {
+                  public abstract Room CreateRoom();
+              }
+
+              public class SingleRoomFactory : RoomFactory
+              {
+                  public override Room CreateRoom()
+                  {
+                      return new Room { RoomType = "Single", Price = 100 };
+                  }
+              }
+
+              public class DoubleRoomFactory : RoomFactory
+              {
+                  public override Room CreateRoom()
+                  {
+                      return new Room { RoomType = "Double", Price = 200 };
+                  }
+              }
+
+              public class SuiteRoomFactory : RoomFactory
+              {
+                  public override Room CreateRoom()
+                  {
+                      return new Room { RoomType = "Suite", Price = 300 };
+                  }
+              }
+          }
+
+    - name: Crear interfaces y clases para Strategy Pattern
+      copy:
+        dest: /home/ubuntu/hotel_booking_app/IReservationStrategy.cs
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+        content: |
+          using System;
+
+          namespace HotelBooking
+          {
+              // Strategy Pattern: IReservationStrategy
+              public interface IReservationStrategy
+              {
+                  void Reserve(Room room, DateTime startDate, DateTime endDate);
+              }
+
+              public class StandardReservationStrategy : IReservationStrategy
+              {
+                  public void Reserve(Room room, DateTime startDate, DateTime endDate)
+                  {
+                      Console.WriteLine($"Standard reservation made for {room.RoomType} from {startDate.ToShortDateString()} to {endDate.ToShortDateString()}.");
+                  }
+              }
+
+              public class VIPReservationStrategy : IReservationStrategy
+              {
+                  public void Reserve(Room room, DateTime startDate, DateTime endDate)
+                  {
+                      Console.WriteLine($"VIP reservation made for {room.RoomType} from {startDate.ToShortDateString()} to {endDate.ToShortDateString()} with complimentary services.");
+                  }
+              }
+          }
+
+    - name: Crear interfaces y clases para Observer Pattern
+      copy:
+        dest: /home/ubuntu/hotel_booking_app/IReservationObserver.cs
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+        content: |
+          namespace HotelBooking
+          {
+              // Observer Pattern: IReservationObserver
+              public interface IReservationObserver
+              {
+                  void Update(Reservation reservation);
+              }
+
+              // Ejemplo de un Observador: Servicio de Limpieza
+              public class CleaningService : IReservationObserver
+              {
+                  public void Update(Reservation reservation)
+                  {
+                      Console.WriteLine($"[CleaningService] Notificado: Limpieza programada para la habitación {reservation.Room.RoomType} del {reservation.StartDate.ToShortDateString()} al {reservation.EndDate.ToShortDateString()}.");
+                  }
+              }
+          }
+
+    - name: Crear clase Reservation.cs
+      copy:
+        dest: /home/ubuntu/hotel_booking_app/Reservation.cs
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+        content: |
+          using System;
+
+          namespace HotelBooking
+          {
+              public class Reservation
+              {
+                  public Hotel Hotel { get; private set; }
+                  public Room Room { get; private set; }
+                  public DateTime StartDate { get; private set; }
+                  public DateTime EndDate { get; private set; }
+
+                  public Reservation(Hotel hotel, Room room, DateTime startDate, DateTime endDate)
+                  {
+                      Hotel = hotel;
+                      Room = room;
+                      StartDate = startDate;
+                      EndDate = endDate;
+                  }
+              }
+          }
+
+    - name: Crear clase ReservationManager.cs
+      copy:
+        dest: /home/ubuntu/hotel_booking_app/ReservationManager.cs
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+        content: |
+          using System;
+          using System.Collections.Generic;
+
+          namespace HotelBooking
+          {
+              public class ReservationManager
+              {
+                  private readonly IReservationStrategy reservationStrategy;
+                  private readonly List<IReservationObserver> observers = new List<IReservationObserver>();
+
+                  public ReservationManager(IReservationStrategy strategy, IEnumerable<IReservationObserver> observers)
+                  {
+                      reservationStrategy = strategy;
+                      this.observers.AddRange(observers);
+                  }
+
+                  private void Notify(Reservation reservation)
+                  {
+                      foreach (var observer in observers)
+                      {
+                          observer.Update(reservation);
+                      }
+                  }
+
+                  public void MakeReservation(string roomType, DateTime startDate, DateTime endDate)
+                  {
+                      var hotel = Hotel.Instance;
+                      var room = hotel.Rooms.Find(r => r.RoomType.Equals(roomType, StringComparison.OrdinalIgnoreCase));
+
+                      if (room != null)
+                      {
+                          // Realizar la reserva usando la estrategia actual
+                          reservationStrategy?.Reserve(room, startDate, endDate);
+
+                          var reservation = new Reservation(hotel, room, startDate, endDate);
+                          // Notificar a los observadores sobre la nueva reserva
+                          Notify(reservation);
+                      }
+                      else
+                      {
+                          Console.WriteLine("Room not available.");
+                      }
+                  }
+              }
+          }
+      # Nota: Se ha modificado la clase ReservationManager para utilizar inyección de dependencias.
+
+    - name: Crear controlador ReservationsController.cs
+      copy:
+        dest: /home/ubuntu/hotel_booking_app/Controllers/ReservationsController.cs
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+        content: |
+          using Microsoft.AspNetCore.Mvc;
+          using System;
+
+          namespace HotelBooking.Controllers
+          {
+              [Route("api/[controller]")]
+              [ApiController]
+              public class ReservationsController : ControllerBase
+              {
+                  private readonly ReservationManager reservationManager;
+
+                  public ReservationsController(ReservationManager manager)
+                  {
+                      reservationManager = manager;
+                  }
+
+                  [HttpPost]
+                  public IActionResult MakeReservation([FromBody] ReservationRequest request)
+                  {
+                      reservationManager.MakeReservation(request.RoomType, request.StartDate, request.EndDate);
+                      return Ok("Reservation processed.");
+                  }
+              }
+
+              public class ReservationRequest
+              {
+                  public string RoomType { get; set; }
+                  public DateTime StartDate { get; set; }
+                  public DateTime EndDate { get; set; }
+              }
+          }
+
+    - name: Crear directorios para los controladores
+      file:
+        path: /home/ubuntu/hotel_booking_app/Controllers
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Construir la aplicación de reservas de hotel
+      command: dotnet build /home/ubuntu/hotel_booking_app/HotelBooking.csproj
+      args:
+        chdir: /home/ubuntu/hotel_booking_app
+
+    - name: Crear archivo de servicio systemd para la aplicación HotelBooking
+      copy:
+        dest: /etc/systemd/system/hotelbooking.service
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=HotelBooking .NET Core Application
+          After=network.target
+
+          [Service]
+          WorkingDirectory=/home/ubuntu/hotel_booking_app
+          ExecStart=/usr/bin/dotnet /home/ubuntu/hotel_booking_app/bin/Debug/net8.0/HotelBooking.dll
+          Restart=always
+          RestartSec=10
+          SyslogIdentifier=hotelbooking
+          User=ubuntu
+          Environment=ASPNETCORE_ENVIRONMENT=Production
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Recargar systemd para aplicar los cambios
+      command: systemctl daemon-reload
+
+    - name: Habilitar y iniciar el servicio HotelBooking
+      systemd:
+        name: hotelbooking
+        enabled: yes
+        state: restarted
