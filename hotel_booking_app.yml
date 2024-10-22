@@ -274,6 +274,8 @@
         group: ubuntu
         mode: '0644'
         content: |
+          using System;
+          
           namespace HotelBooking
           {
               // Observer Pattern: IReservationObserver
