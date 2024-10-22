@@ -25,8 +25,6 @@
 
     - name: Instalar el paquete de repositorio de Microsoft
       command: dpkg -i /tmp/packages-microsoft-prod.deb
-      args:
-        warn: false
 
     - name: Actualizar el caché de apt después de agregar el repositorio
       apt:
