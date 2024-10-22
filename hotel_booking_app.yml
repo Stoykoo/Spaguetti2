@@ -34,14 +34,62 @@
       apt:
         name: dotnet-sdk-8.0
         state: present
-
-    - name: Crear directorio para la aplicación de reservas de hotel
+        
+        - name: Crear directorio para la aplicación de reservas de hotel
       file:
         path: /home/ubuntu/hotel_booking_app
         state: directory
         owner: ubuntu
         group: ubuntu
         mode: '0755'
+
+    - name: Crear directorios para los controladores
+      file:
+        path: /home/ubuntu/hotel_booking_app/Controllers
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Crear controlador ReservationsController.cs
+      copy:
+        dest: /home/ubuntu/hotel_booking_app/Controllers/ReservationsController.cs
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+        content: |
+          using Microsoft.AspNetCore.Mvc;
+          using System;
+
+          namespace HotelBooking.Controllers
+          {
+              [Route("api/[controller]")]
+              [ApiController]
+              public class ReservationsController : ControllerBase
+              {
+                  private readonly ReservationManager reservationManager;
+
+                  public ReservationsController(ReservationManager manager)
+                  {
+                      reservationManager = manager;
+                  }
+
+                  [HttpPost]
+                  public IActionResult MakeReservation([FromBody] ReservationRequest request)
+                  {
+                      reservationManager.MakeReservation(request.RoomType, request.StartDate, request.EndDate);
+                      return Ok("Reservation processed.");
+                  }
+              }
+
+              public class ReservationRequest
+              {
+                  public string RoomType { get; set; }
+                  public DateTime StartDate { get; set; }
+                  public DateTime EndDate { get; set; }
+              }
+          }
+
 
     - name: Crear archivo del proyecto HotelBooking.csproj
       copy:
