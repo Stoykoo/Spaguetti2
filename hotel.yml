@@ -71,7 +71,7 @@
         group: ubuntu
         mode: '0644'
         content: |
-          # Programa principal que configura y ejecuta el host web
+          // Programa principal que configura y ejecuta el host web
           using System;
           using Microsoft.AspNetCore.Hosting;
           using Microsoft.Extensions.Hosting;
@@ -102,7 +102,7 @@
         group: ubuntu
         mode: '0644'
         content: |
-          # Clase de inicio que configura los servicios y el pipeline de la aplicación
+          // Clase de inicio que configura los servicios y el pipeline de la aplicación
           using Microsoft.AspNetCore.Builder;
           using Microsoft.AspNetCore.Hosting;
           using Microsoft.Extensions.DependencyInjection;
@@ -112,20 +112,20 @@
           {
               public class Startup
               {
-                  # Método para configurar los servicios
+                  // Método para configurar los servicios
                   public void ConfigureServices(IServiceCollection services)
                   {
                       services.AddControllers();
-                      # Singleton para gestionar la instancia de Hotel como recurso global
+                      // Singleton para gestionar la instancia de Hotel como recurso global
                       services.AddSingleton<Hotel>();
                       services.AddScoped<ReservationManager>();
-                      # Strategy Pattern para definir diferentes estrategias de reserva
+                      // Strategy Pattern para definir diferentes estrategias de reserva
                       services.AddSingleton<IReservationStrategy, StandardReservationStrategy>();
-                      # Observer Pattern para notificar cambios en las reservas
+                      // Observer Pattern para notificar cambios en las reservas
                       services.AddSingleton<IReservationObserver, CleaningService>();
                   }
 
-                  # Método para configurar el pipeline de la aplicación
+                  // Método para configurar el pipeline de la aplicación
                   public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
                   {
                       if (env.IsDevelopment())
@@ -157,29 +157,29 @@
         group: ubuntu
         mode: '0644'
         content: |
-          # Singleton Pattern: Clase Hotel
+          // Singleton Pattern: Clase Hotel
           using System;
           using System.Collections.Generic;
 
           namespace HotelBooking
           {
-              # Singleton para gestionar la instancia de Hotel como recurso global
+              // Singleton para gestionar la instancia de Hotel como recurso global
               public sealed class Hotel
               {
-                  # Instancia única de Hotel (Singleton)
+                  // Instancia única de Hotel (Singleton)
                   private static readonly Lazy<Hotel> instance = new Lazy<Hotel>(() => new Hotel());
 
                   public string Name { get; private set; }
                   public List<Room> Rooms { get; private set; }
 
-                  # Constructor privado para prevenir instanciación externa
+                  // Constructor privado para prevenir instanciación externa
                   private Hotel()
                   {
                       Name = "Luxury Inn";
                       Rooms = new List<Room>();
                   }
 
-                  # Propiedad para acceder a la instancia única
+                  // Propiedad para acceder a la instancia única
                   public static Hotel Instance
                   {
                       get
@@ -204,7 +204,7 @@
                   }
               }
 
-              # Clase Room
+              // Clase Room
               public class Room
               {
                   public string RoomType { get; set; }
@@ -220,18 +220,18 @@
         group: ubuntu
         mode: '0644'
         content: |
-          # Factory Method para encapsular la creación de habitaciones
+          // Factory Method para encapsular la creación de habitaciones
           using System;
 
           namespace HotelBooking
           {
-              # Clase abstracta para el Factory Method
+              // Clase abstracta para el Factory Method
               public abstract class RoomFactory
               {
                   public abstract Room CreateRoom();
               }
 
-              # Implementación concreta para habitación individual
+              // Implementación concreta para habitación individual
               public class SingleRoomFactory : RoomFactory
               {
                   public override Room CreateRoom()
@@ -240,7 +240,7 @@
                   }
               }
 
-              # Implementación concreta para habitación doble
+              // Implementación concreta para habitación doble
               public class DoubleRoomFactory : RoomFactory
               {
                   public override Room CreateRoom()
@@ -249,7 +249,7 @@
                   }
               }
 
-              # Implementación concreta para suite
+              // Implementación concreta para suite
               public class SuiteRoomFactory : RoomFactory
               {
                   public override Room CreateRoom()
@@ -267,18 +267,18 @@
         group: ubuntu
         mode: '0644'
         content: |
-          # Strategy Pattern para definir diferentes estrategias de reserva
+          // Strategy Pattern para definir diferentes estrategias de reserva
           using System;
 
           namespace HotelBooking
           {
-              # Interfaz para la estrategia de reserva
+              // Interfaz para la estrategia de reserva
               public interface IReservationStrategy
               {
                   void Reserve(Room room, DateTime startDate, DateTime endDate);
               }
 
-              # Estrategia estándar de reserva
+              // Estrategia estándar de reserva
               public class StandardReservationStrategy : IReservationStrategy
               {
                   public void Reserve(Room room, DateTime startDate, DateTime endDate)
@@ -287,7 +287,7 @@
                   }
               }
 
-              # Estrategia VIP de reserva
+              // Estrategia VIP de reserva
               public class VIPReservationStrategy : IReservationStrategy
               {
                   public void Reserve(Room room, DateTime startDate, DateTime endDate)
@@ -305,18 +305,18 @@
         group: ubuntu
         mode: '0644'
         content: |
-          # Observer Pattern para notificar cambios en las reservas
+          // Observer Pattern para notificar cambios en las reservas a otras partes interesadas
           using System;
           
           namespace HotelBooking
           {
-              # Interfaz para el observador de reservas
+              // Interfaz para el observador de reservas
               public interface IReservationObserver
               {
                   void Update(Reservation reservation);
               }
 
-              # Observador concreto: Servicio de Limpieza
+              // Observador concreto: Servicio de Limpieza
               public class CleaningService : IReservationObserver
               {
                   public void Update(Reservation reservation)
@@ -334,7 +334,7 @@
         group: ubuntu
         mode: '0644'
         content: |
-          # Clase que representa una reserva
+          // Clase que representa una reserva
           using System;
 
           namespace HotelBooking
@@ -364,14 +364,14 @@
         group: ubuntu
         mode: '0644'
         content: |
-          # Clase que gestiona las reservas
+          // Clase que gestiona las reservas utilizando Strategy y Observer Patterns
           using System;
           using System.Collections.Generic;
 
           namespace HotelBooking
           {
-              # Strategy Pattern: Uso de IReservationStrategy
-              # Observer Pattern: Notificación a observadores sobre cambios en reservas
+              // Strategy Pattern: Uso de IReservationStrategy
+              // Observer Pattern: Notificación a observadores sobre cambios en reservas
               public class ReservationManager
               {
                   private readonly IReservationStrategy reservationStrategy;
@@ -383,7 +383,7 @@
                       this.observers.AddRange(observers);
                   }
 
-                  # Método para notificar a los observadores
+                  // Método para notificar a los observadores
                   private void Notify(Reservation reservation)
                   {
                       foreach (var observer in observers)
@@ -392,7 +392,7 @@
                       }
                   }
 
-                  # Método para realizar una reserva
+                  // Método para realizar una reserva
                   public void MakeReservation(string roomType, DateTime startDate, DateTime endDate)
                   {
                       var hotel = Hotel.Instance;
@@ -400,11 +400,11 @@
 
                       if (room != null)
                       {
-                          # Utiliza la estrategia de reserva seleccionada
+                          // Utiliza la estrategia de reserva seleccionada
                           reservationStrategy?.Reserve(room, startDate, endDate);
 
                           var reservation = new Reservation(hotel, room, startDate, endDate);
-                          # Notifica a los observadores sobre la nueva reserva
+                          // Notifica a los observadores sobre la nueva reserva
                           Notify(reservation);
                       }
                       else
@@ -433,7 +433,7 @@
         group: ubuntu
         mode: '0644'
         content: |
-          # Controlador para gestionar las reservas vía API
+          // Controlador para gestionar las reservas vía API
           using Microsoft.AspNetCore.Mvc;
           using System;
 
@@ -445,13 +445,13 @@
               {
                   private readonly ReservationManager reservationManager;
 
-                  # Inyección de dependencias de ReservationManager
+                  // Inyección de dependencias de ReservationManager
                   public ReservationsController(ReservationManager manager)
                   {
                       reservationManager = manager;
                   }
 
-                  # Endpoint HTTP POST para realizar una reserva
+                  // Endpoint HTTP POST para realizar una reserva
                   [HttpPost]
                   public IActionResult MakeReservation([FromBody] ReservationRequest request)
                   {
@@ -460,7 +460,7 @@
                   }
               }
 
-              # Clase para el modelo de solicitud de reserva
+              // Clase para el modelo de solicitud de reserva
               public class ReservationRequest
               {
                   public string RoomType { get; set; }
