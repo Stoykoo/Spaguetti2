@@ -6,14 +6,12 @@
   tasks:
   
     # Actualiza el sistema operativo para asegurarse de que todo esté actualizado
-    
     - name: Actualizar el sistema
       apt:
         update_cache: yes
         upgrade: dist
 
     # Instala las dependencias necesarias para manejar repositorios y descargas
-    
     - name: Instalar dependencias necesarias
       apt:
         name:
@@ -24,32 +22,27 @@
         state: present
 
     # Descarga el paquete del repositorio de Microsoft para Ubuntu 24.04 LTS
-    
     - name: Descargar el paquete de repositorio de Microsoft para Ubuntu 24.04 LTS
       get_url:
         url: https://packages.microsoft.com/config/ubuntu/24.04/packages-microsoft-prod.deb
         dest: /tmp/packages-microsoft-prod.deb
 
     # Instala el paquete de repositorio de Microsoft
-    
     - name: Instalar el paquete de repositorio de Microsoft
       command: dpkg -i /tmp/packages-microsoft-prod.deb
 
     # Actualiza el caché de apt tras agregar el nuevo repositorio
-    
     - name: Actualizar el caché de apt después de agregar el repositorio
       apt:
         update_cache: yes
 
     # Instala el SDK de .NET Core 8, necesario para desarrollar la aplicación
-    
     - name: Instalar .NET SDK
       apt:
         name: dotnet-sdk-8.0
         state: present
 
     # Crea el directorio para la aplicación de reservas del hotel
-    
     - name: Crear directorio para la aplicación de reservas de hotel
       file:
         path: /home/ubuntu/hotel_booking_app
@@ -59,7 +52,6 @@
         mode: '0755'
 
     # Crea el archivo del proyecto .NET con la configuración básica para .NET Core 8
-    
     - name: Crear archivo del proyecto HotelBooking.csproj
       copy:
         dest: /home/ubuntu/hotel_booking_app/HotelBooking.csproj
@@ -74,7 +66,6 @@
           </Project>
 
     # Crea el archivo principal 'Program.cs' que inicia la aplicación web
-    
     - name: Crear archivo Program.cs
       copy:
         dest: /home/ubuntu/hotel_booking_app/Program.cs
@@ -105,7 +96,6 @@
           }
 
     # Crea el archivo 'Startup.cs' que configura los servicios y middlewares de la aplicación
-    
     - name: Crear archivo Startup.cs
       copy:
         dest: /home/ubuntu/hotel_booking_app/Startup.cs
@@ -155,7 +145,6 @@
           }
 
     # Define la clase 'Hotel.cs' con patrón Singleton para que solo haya una instancia del hotel
-    
     - name: Crear clase Hotel.cs
       copy:
         dest: /home/ubuntu/hotel_booking_app/Hotel.cs
@@ -215,7 +204,6 @@
           }
 
     # Define la clase RoomFactory.cs con el patrón Factory Method para crear diferentes tipos de habitaciones
-    
     - name: Crear clase RoomFactory.cs
       copy:
         dest: /home/ubuntu/hotel_booking_app/RoomFactory.cs
@@ -259,7 +247,6 @@
           }
 
     # Implementa el patrón Strategy para definir diferentes estrategias de reserva (estándar y VIP)
-    
     - name: Crear interfaces y clases para Strategy Pattern
       copy:
         dest: /home/ubuntu/hotel_booking_app/IReservationStrategy.cs
@@ -322,4 +309,166 @@
               }
           }
 
-    # Define la clase
+    # Define la clase 'Reservation.cs' que representa una reserva realizada
+    - name: Crear clase Reservation.cs
+      copy:
+        dest: /home/ubuntu/hotel_booking_app/Reservation.cs
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+        content: |
+          using System;
+
+          namespace HotelBooking
+          {
+              public class Reservation
+              {
+                  public Hotel Hotel { get; private set; }
+                  public Room Room { get; private set; }
+                  public DateTime StartDate { get; private set; }
+                  public DateTime EndDate { get; private set; }
+
+                  public Reservation(Hotel hotel, Room room, DateTime startDate, DateTime endDate)
+                  {
+                      Hotel = hotel;
+                      Room = room;
+                      StartDate = startDate;
+                      EndDate = endDate;
+                  }
+              }
+          }
+
+    # Define la clase 'ReservationManager.cs' que gestiona las reservas usando estrategias e inyección de dependencias
+    - name: Crear clase ReservationManager.cs
+      copy:
+        dest: /home/ubuntu/hotel_booking_app/ReservationManager.cs
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+        content: |
+          using System;
+          using System.Collections.Generic;
+
+          namespace HotelBooking
+          {
+              public class ReservationManager
+              {
+                  private readonly IReservationStrategy reservationStrategy;
+                  private readonly List<IReservationObserver> observers = new List<IReservationObserver>();
+
+                  public ReservationManager(IReservationStrategy strategy, IEnumerable<IReservationObserver> observers)
+                  {
+                      reservationStrategy = strategy;
+                      this.observers.AddRange(observers);
+                  }
+
+                  private void Notify(Reservation reservation)
+                  {
+                      foreach (var observer in observers)
+                      {
+                          observer.Update(reservation);
+                      }
+                  }
+
+                  public void MakeReservation(string roomType, DateTime startDate, DateTime endDate)
+                  {
+                      var hotel = Hotel.Instance;
+                      var room = hotel.Rooms.Find(r => r.RoomType.Equals(roomType, StringComparison.OrdinalIgnoreCase));
+
+                      if (room != null)
+                      {
+                          // Realizar la reserva usando la estrategia actual
+                          reservationStrategy?.Reserve(room, startDate, endDate);
+
+                          var reservation = new Reservation(hotel, room, startDate, endDate);
+                          // Notificar a los observadores sobre la nueva reserva
+                          Notify(reservation);
+                      }
+                      else
+                      {
+                          Console.WriteLine("Room not available.");
+                      }
+                  }
+              }
+          }
+
+    # Crea los controladores de API para manejar las reservas a través de solicitudes HTTP
+    - name: Crear controlador ReservationsController.cs
+      copy:
+        dest: /home/ubuntu/hotel_booking_app/Controllers/ReservationsController.cs
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+        content: |
+          using Microsoft.AspNetCore.Mvc;
+          using System;
+
+          namespace HotelBooking.Controllers
+          {
+              [Route("api/[controller]")]
+              [ApiController]
+              public class ReservationsController : ControllerBase
+              {
+                  private readonly ReservationManager reservationManager;
+
+                  public ReservationsController(ReservationManager manager)
+                  {
+                      reservationManager = manager;
+                  }
+
+                  [HttpPost]
+                  public IActionResult MakeReservation([FromBody] ReservationRequest request)
+                  {
+                      reservationManager.MakeReservation(request.RoomType, request.StartDate, request.EndDate);
+                      return Ok("Reservation processed.");
+                  }
+              }
+
+              public class ReservationRequest
+              {
+                  public string RoomType { get; set; }
+                  public DateTime StartDate { get; set; }
+                  public DateTime EndDate { get; set; }
+              }
+          }
+
+    # Compila la aplicación de reservas de hotel
+    - name: Construir la aplicación de reservas de hotel
+      command: dotnet build /home/ubuntu/hotel_booking_app/HotelBooking.csproj
+      args:
+        chdir: /home/ubuntu/hotel_booking_app
+
+    # Crea un archivo de servicio systemd para ejecutar la aplicación como un servicio
+    - name: Crear archivo de servicio systemd para la aplicación HotelBooking
+      copy:
+        dest: /etc/systemd/system/hotelbooking.service
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=HotelBooking .NET Core Application
+          After=network.target
+
+          [Service]
+          WorkingDirectory=/home/ubuntu/hotel_booking_app
+          ExecStart=/usr/bin/dotnet /home/ubuntu/hotel_booking_app/bin/Debug/net8.0/HotelBooking.dll
+          Restart=always
+          RestartSec=10
+          SyslogIdentifier=hotelbooking
+          User=ubuntu
+          Environment=ASPNETCORE_ENVIRONMENT=Production
+
+          [Install]
+          WantedBy=multi-user.target
+
+    # Recarga systemd para aplicar los cambios del nuevo servicio
+    - name: Recargar systemd para aplicar los cambios
+      command: systemctl daemon-reload
+
+    # Habilita y arranca el servicio de la aplicación HotelBooking
+    - name: Habilitar y iniciar el servicio HotelBooking
+      systemd:
+        name: hotelbooking
+        enabled: yes
+        state: restarted
