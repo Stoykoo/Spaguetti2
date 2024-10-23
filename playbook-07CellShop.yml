@@ -17,10 +17,10 @@
           - software-properties-common
         state: present
 
-    - name: Agregar el repositorio de Microsoft
-      apt_repository:
-        repo: "deb [arch=amd64] https://packages.microsoft.com/repos/ubuntu/ $(lsb_release -cs) main"
-        state: present
+- name: Agregar el repositorio de Microsoft
+  apt_repository:
+    repo: "deb [arch=amd64] https://packages.microsoft.com/repos/ubuntu/ $(lsb_release -cs) main"
+    state: present
 
     - name: Importar la clave de Microsoft
       apt_key:
